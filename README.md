@@ -31,6 +31,14 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
+This project uses a `src/` layout.
+
+Before running the tool during development, install it in editable mode:
+
+```bash
+pip install -e .
+```
+
 ## Run GUI
 
 ```bash
@@ -43,6 +51,12 @@ python main.py
 python -m geodin_ggf_tool.backend
 ```
 
+If you do not install the project, Python may show:
+```
+ModuleNotFoundError: No module named 'geodin_ggf_tool' 
+```
+
+
 ## Package as EXE later
 
 A basic PyInstaller command:
@@ -52,3 +66,12 @@ pyinstaller --onefile --windowed --name GeoDIN_GGF_Date_Tool main.py
 ```
 
 The final `.exe` will appear in the `dist/` folder.
+
+## Planned features
+
+- Drag-and-drop support for `.GGF` and `.xlsx` files
+- English/German interface language switch
+- German and English logs/messages
+- Better duplicate-date review before writing
+- Excel preview before processing
+- PyInstaller `.exe` build to run without Python
