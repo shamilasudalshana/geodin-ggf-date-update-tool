@@ -12,6 +12,14 @@ except ImportError:
     TkinterDnD = None
     DND_AVAILABLE = False
 
+try:
+    from PIL import Image, ImageTk
+    PIL_AVAILABLE = True
+except ImportError:
+    Image = None
+    ImageTk = None
+    PIL_AVAILABLE = False
+
 from .backend import (
     ProcessSettings,
     update_ggf_dates,
@@ -46,9 +54,11 @@ class GeoDINDateToolApp:
         self.remove_duplicates = tk.BooleanVar(value=False)
 
         self.headers: list[str] = []
-
         self.widgets = {}
+        self.logo_image = None
+
         self._build_ui()
+        self.load_logo()
         self.apply_language()
 
         if DND_AVAILABLE:
@@ -58,7 +68,7 @@ class GeoDINDateToolApp:
         return TEXT[self.lang.get()].get(key, key)
 
     def _build_ui(self):
-        self.root.geometry("800x650")
+        self.root.geometry("820x660")
 
         padding = {"padx": 8, "pady": 6}
 
@@ -66,10 +76,13 @@ class GeoDINDateToolApp:
         main.pack(fill="both", expand=True, padx=12, pady=12)
 
         self.widgets["title"] = ttk.Label(main, font=("Segoe UI", 16, "bold"))
-        self.widgets["title"].grid(row=0, column=0, columnspan=3, sticky="w", **padding)
+        self.widgets["title"].grid(row=0, column=0, columnspan=2, sticky="w", **padding)
+
+        self.widgets["logo"] = ttk.Label(main)
+        self.widgets["logo"].grid(row=0, column=2, sticky="e", **padding)
 
         self.widgets["language_label"] = ttk.Label(main)
-        self.widgets["language_label"].grid(row=0, column=1, sticky="e", **padding)
+        self.widgets["language_label"].grid(row=1, column=0, sticky="w", **padding)
 
         lang_box = ttk.Combobox(
             main,
@@ -78,72 +91,93 @@ class GeoDINDateToolApp:
             width=8,
             state="readonly",
         )
-        lang_box.grid(row=0, column=2, sticky="e", **padding)
+        lang_box.grid(row=1, column=1, sticky="w", **padding)
         lang_box.bind("<<ComboboxSelected>>", lambda event: self.apply_language())
 
         self.widgets["ggf_label"] = ttk.Label(main)
-        self.widgets["ggf_label"].grid(row=1, column=0, sticky="w", **padding)
-        ttk.Entry(main, textvariable=self.ggf_path, width=72).grid(row=1, column=1, sticky="we", **padding)
+        self.widgets["ggf_label"].grid(row=2, column=0, sticky="w", **padding)
+        ttk.Entry(main, textvariable=self.ggf_path, width=72).grid(row=2, column=1, sticky="we", **padding)
         self.widgets["ggf_browse"] = ttk.Button(main, command=self.select_ggf)
-        self.widgets["ggf_browse"].grid(row=1, column=2, **padding)
+        self.widgets["ggf_browse"].grid(row=2, column=2, **padding)
 
         self.widgets["excel_label"] = ttk.Label(main)
-        self.widgets["excel_label"].grid(row=2, column=0, sticky="w", **padding)
-        ttk.Entry(main, textvariable=self.xlsx_path, width=72).grid(row=2, column=1, sticky="we", **padding)
+        self.widgets["excel_label"].grid(row=3, column=0, sticky="w", **padding)
+        ttk.Entry(main, textvariable=self.xlsx_path, width=72).grid(row=3, column=1, sticky="we", **padding)
         self.widgets["excel_browse"] = ttk.Button(main, command=self.select_xlsx)
-        self.widgets["excel_browse"].grid(row=2, column=2, **padding)
+        self.widgets["excel_browse"].grid(row=3, column=2, **padding)
 
         self.widgets["output_label"] = ttk.Label(main)
-        self.widgets["output_label"].grid(row=3, column=0, sticky="w", **padding)
-        ttk.Entry(main, textvariable=self.output_path, width=72).grid(row=3, column=1, sticky="we", **padding)
+        self.widgets["output_label"].grid(row=4, column=0, sticky="w", **padding)
+        ttk.Entry(main, textvariable=self.output_path, width=72).grid(row=4, column=1, sticky="we", **padding)
         self.widgets["output_browse"] = ttk.Button(main, command=self.select_output)
-        self.widgets["output_browse"].grid(row=3, column=2, **padding)
+        self.widgets["output_browse"].grid(row=4, column=2, **padding)
 
         separator = ttk.Separator(main)
-        separator.grid(row=4, column=0, columnspan=3, sticky="we", pady=12)
+        separator.grid(row=5, column=0, columnspan=3, sticky="we", pady=12)
 
         self.widgets["date_column_label"] = ttk.Label(main)
-        self.widgets["date_column_label"].grid(row=5, column=0, sticky="w", **padding)
+        self.widgets["date_column_label"].grid(row=6, column=0, sticky="w", **padding)
         self.date_combo = ttk.Combobox(main, textvariable=self.date_column, values=self.headers, width=40)
-        self.date_combo.grid(row=5, column=1, sticky="w", **padding)
+        self.date_combo.grid(row=6, column=1, sticky="w", **padding)
 
         self.widgets["filter_column_label"] = ttk.Label(main)
-        self.widgets["filter_column_label"].grid(row=6, column=0, sticky="w", **padding)
+        self.widgets["filter_column_label"].grid(row=7, column=0, sticky="w", **padding)
         self.filter_combo = ttk.Combobox(main, textvariable=self.filter_column, values=self.headers, width=40)
-        self.filter_combo.grid(row=6, column=1, sticky="w", **padding)
+        self.filter_combo.grid(row=7, column=1, sticky="w", **padding)
 
         self.widgets["filter_min_label"] = ttk.Label(main)
-        self.widgets["filter_min_label"].grid(row=7, column=0, sticky="w", **padding)
-        ttk.Entry(main, textvariable=self.filter_min, width=16).grid(row=7, column=1, sticky="w", **padding)
+        self.widgets["filter_min_label"].grid(row=8, column=0, sticky="w", **padding)
+        ttk.Entry(main, textvariable=self.filter_min, width=16).grid(row=8, column=1, sticky="w", **padding)
 
         self.widgets["filter_max_label"] = ttk.Label(main)
-        self.widgets["filter_max_label"].grid(row=8, column=0, sticky="w", **padding)
-        ttk.Entry(main, textvariable=self.filter_max, width=16).grid(row=8, column=1, sticky="w", **padding)
+        self.widgets["filter_max_label"].grid(row=9, column=0, sticky="w", **padding)
+        ttk.Entry(main, textvariable=self.filter_max, width=16).grid(row=9, column=1, sticky="w", **padding)
 
         self.widgets["dummy_date_label"] = ttk.Label(main)
-        self.widgets["dummy_date_label"].grid(row=9, column=0, sticky="w", **padding)
-        ttk.Entry(main, textvariable=self.dummy_date, width=16).grid(row=9, column=1, sticky="w", **padding)
+        self.widgets["dummy_date_label"].grid(row=10, column=0, sticky="w", **padding)
+        ttk.Entry(main, textvariable=self.dummy_date, width=16).grid(row=10, column=1, sticky="w", **padding)
 
         self.widgets["remove_duplicates_check"] = ttk.Checkbutton(
             main,
             variable=self.remove_duplicates,
         )
-        self.widgets["remove_duplicates_check"].grid(row=10, column=1, sticky="w", **padding)
+        self.widgets["remove_duplicates_check"].grid(row=11, column=1, sticky="w", **padding)
 
         self.widgets["update_button"] = ttk.Button(main, command=self.run_update)
-        self.widgets["update_button"].grid(row=11, column=1, sticky="w", padx=8, pady=14)
+        self.widgets["update_button"].grid(row=12, column=1, sticky="w", padx=8, pady=14)
 
         self.widgets["drop_hint"] = ttk.Label(main, foreground="gray")
-        self.widgets["drop_hint"].grid(row=11, column=1, sticky="e", **padding)
+        self.widgets["drop_hint"].grid(row=12, column=1, sticky="e", **padding)
 
         self.widgets["log_label"] = ttk.Label(main)
-        self.widgets["log_label"].grid(row=12, column=0, sticky="nw", **padding)
+        self.widgets["log_label"].grid(row=13, column=0, sticky="nw", **padding)
 
         self.log_box = tk.Text(main, height=15, width=90)
-        self.log_box.grid(row=12, column=1, columnspan=2, sticky="nsew", **padding)
+        self.log_box.grid(row=13, column=1, columnspan=2, sticky="nsew", **padding)
 
         main.columnconfigure(1, weight=1)
-        main.rowconfigure(12, weight=1)
+        main.rowconfigure(13, weight=1)
+
+    def load_logo(self):
+        if not PIL_AVAILABLE:
+            return
+
+        possible_paths = [
+            Path.cwd() / "assets" / "logo.png",
+            Path(__file__).resolve().parents[2] / "assets" / "logo.png",
+            Path(__file__).resolve().parents[3] / "assets" / "logo.png",
+        ]
+
+        for logo_path in possible_paths:
+            if logo_path.exists():
+                try:
+                    image = Image.open(logo_path)
+                    image.thumbnail((70, 70))
+                    self.logo_image = ImageTk.PhotoImage(image)
+                    self.widgets["logo"].config(image=self.logo_image)
+                    return
+                except Exception:
+                    return
 
     def apply_language(self):
         self.root.title(self.t("app_title"))
@@ -270,6 +304,7 @@ class GeoDINDateToolApp:
             return False
 
         dummy = self.dummy_date.get().strip()
+
         if len(dummy) != 8 or not dummy.isdigit():
             messagebox.showerror("Error", self.t("invalid_dummy"))
             return False
@@ -297,6 +332,7 @@ class GeoDINDateToolApp:
             dummy_date=self.dummy_date.get().strip(),
             max_slots=DEFAULT_MAX_SLOTS,
             remove_duplicate_dates=self.remove_duplicates.get(),
+            language=self.lang.get(),
         )
 
         try:

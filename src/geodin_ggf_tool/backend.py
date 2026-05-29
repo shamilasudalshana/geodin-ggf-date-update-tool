@@ -18,6 +18,44 @@ DEFAULT_DUMMY_DATE = "19000101"
 DEFAULT_MAX_SLOTS = 60
 
 
+LOG_TEXT = {
+    "en": {
+        "input_ggf": "Input GGF",
+        "input_excel": "Input Excel",
+        "output_ggf": "Output GGF",
+        "date_column": "Date column",
+        "filter_column": "Filter column",
+        "filter_range": "Filter range",
+        "valid_dates": "Valid Excel dates after filter",
+        "slots_found": "GGF SMPDATE slots found",
+        "dummy_date": "Dummy date used for empty slots",
+        "duplicates": "Duplicate dates detected",
+        "saved": "Saved",
+        "file_size": "File size unchanged",
+        "slot": "Slot",
+    },
+    "de": {
+        "input_ggf": "Eingabe-GGF",
+        "input_excel": "Eingabe-Excel",
+        "output_ggf": "Ausgabe-GGF",
+        "date_column": "Datumsspalte",
+        "filter_column": "Filterspalte",
+        "filter_range": "Filterbereich",
+        "valid_dates": "Gültige Excel-Datumswerte nach Filterung",
+        "slots_found": "Gefundene GGF-SMPDATE-Felder",
+        "dummy_date": "Dummy-Datum für leere Felder",
+        "duplicates": "Doppelte Datumswerte gefunden",
+        "saved": "Gespeichert",
+        "file_size": "Dateigröße unverändert",
+        "slot": "Feld",
+    },
+}
+
+
+def log_t(language: str, key: str) -> str:
+    return LOG_TEXT.get(language, LOG_TEXT["en"]).get(key, key)
+
+
 @dataclass
 class ProcessSettings:
     ggf_input: Path
@@ -34,6 +72,7 @@ class ProcessSettings:
     max_slots: int = DEFAULT_MAX_SLOTS
 
     remove_duplicate_dates: bool = False
+    language: str = "en"
 
 
 @dataclass
@@ -63,13 +102,11 @@ def get_excel_headers(xlsx_path: Path) -> list[str]:
 
 
 def auto_detect_column(headers: list[str], preferred_name: str) -> str | None:
-    """
-    Tries to find a column by exact match first, then case-insensitive match.
-    """
     if preferred_name in headers:
         return preferred_name
 
     preferred_lower = preferred_name.lower()
+
     for header in headers:
         if header.lower() == preferred_lower:
             return header
@@ -78,9 +115,6 @@ def auto_detect_column(headers: list[str], preferred_name: str) -> str | None:
 
 
 def excel_value_to_geodin_date(value) -> str | None:
-    """
-    Convert Excel/Python/string date values to GeoDIN format YYYYMMDD.
-    """
     if value is None:
         return None
 
@@ -115,10 +149,6 @@ def read_excel_dates(
     filter_min: float,
     filter_max: float,
 ) -> list[str]:
-    """
-    Read and filter valid dates from the Excel file.
-    Keeps only rows where filter_min <= filter_column <= filter_max.
-    """
     wb = openpyxl.load_workbook(xlsx_path, data_only=True)
     ws = wb.active
 
@@ -149,6 +179,7 @@ def read_excel_dates(
 
         if filter_min <= filter_value <= filter_max:
             geodin_date = excel_value_to_geodin_date(date_value)
+
             if geodin_date:
                 dates.append(geodin_date)
 
@@ -173,13 +204,6 @@ def remove_duplicates_keep_order(dates: list[str]) -> list[str]:
 
 
 def find_filled_smpdate_slots(data: bytes):
-    """
-    Find all fixed-length SMPDATE slots in the GGF binary file.
-
-    This intentionally matches only slots where the date already contains
-    exactly 8 digits. Therefore the template should have all 60 slots filled,
-    usually with real dates or dummy date 19000101.
-    """
     pattern = re.compile(
         re.escape("$SMPDATE$='".encode("utf-16-le"))
         + b"((?:[0-9]\x00){8})"
@@ -194,11 +218,6 @@ def build_final_date_list(
     max_slots: int,
     dummy_date: str,
 ) -> list[str]:
-    """
-    Safe logic:
-    1. First fill all positions with dummy date.
-    2. Then overwrite the first N positions with valid Excel dates.
-    """
     if len(excel_dates) > max_slots:
         raise ValueError(
             f"Excel has {len(excel_dates)} valid dates, "
@@ -214,13 +233,11 @@ def build_final_date_list(
 
 
 def update_ggf_dates(settings: ProcessSettings) -> ProcessResult:
-    """
-    Main backend function used by both CLI and GUI.
-    """
     settings.ggf_input = Path(settings.ggf_input)
     settings.xlsx_input = Path(settings.xlsx_input)
     settings.ggf_output = Path(settings.ggf_output)
 
+    lang = settings.language
     log_lines: list[str] = []
 
     excel_dates = read_excel_dates(
@@ -254,21 +271,24 @@ def update_ggf_dates(settings: ProcessSettings) -> ProcessResult:
             f"Please use a template where all SMPDATE slots contain 8-digit dates."
         )
 
-    log_lines.append(f"Input GGF: {settings.ggf_input}")
-    log_lines.append(f"Input Excel: {settings.xlsx_input}")
-    log_lines.append(f"Output GGF: {settings.ggf_output}")
+    log_lines.append(f"{log_t(lang, 'input_ggf')}: {settings.ggf_input}")
+    log_lines.append(f"{log_t(lang, 'input_excel')}: {settings.xlsx_input}")
+    log_lines.append(f"{log_t(lang, 'output_ggf')}: {settings.ggf_output}")
     log_lines.append("")
-    log_lines.append(f"Date column: {settings.date_column}")
-    log_lines.append(f"Filter column: {settings.filter_column}")
-    log_lines.append(f"Filter range: {settings.filter_min} to {settings.filter_max}")
+    log_lines.append(f"{log_t(lang, 'date_column')}: {settings.date_column}")
+    log_lines.append(f"{log_t(lang, 'filter_column')}: {settings.filter_column}")
+    log_lines.append(
+        f"{log_t(lang, 'filter_range')}: "
+        f"{settings.filter_min} to {settings.filter_max}"
+    )
     log_lines.append("")
-    log_lines.append(f"Valid Excel dates after filter: {len(excel_dates)}")
-    log_lines.append(f"GGF SMPDATE slots found: {len(matches)}")
-    log_lines.append(f"Dummy date used for empty slots: {settings.dummy_date}")
+    log_lines.append(f"{log_t(lang, 'valid_dates')}: {len(excel_dates)}")
+    log_lines.append(f"{log_t(lang, 'slots_found')}: {len(matches)}")
+    log_lines.append(f"{log_t(lang, 'dummy_date')}: {settings.dummy_date}")
     log_lines.append("")
 
     if duplicate_dates:
-        log_lines.append("Duplicate dates detected:")
+        log_lines.append(f"{log_t(lang, 'duplicates')}:")
         for d in duplicate_dates:
             log_lines.append(f"  - {d}")
         log_lines.append("")
@@ -287,7 +307,10 @@ def update_ggf_dates(settings: ProcessSettings) -> ProcessResult:
             )
 
         output[match.start():match.end()] = new_block
-        log_lines.append(f"Slot {i + 1:02d}: {old_date} -> {new_date}")
+
+        log_lines.append(
+            f"{log_t(lang, 'slot')} {i + 1:02d}: {old_date} -> {new_date}"
+        )
 
     settings.ggf_output.parent.mkdir(parents=True, exist_ok=True)
     settings.ggf_output.write_bytes(output)
@@ -295,8 +318,8 @@ def update_ggf_dates(settings: ProcessSettings) -> ProcessResult:
     file_size_unchanged = len(data) == len(output)
 
     log_lines.append("")
-    log_lines.append(f"Saved: {settings.ggf_output}")
-    log_lines.append(f"File size unchanged: {file_size_unchanged}")
+    log_lines.append(f"{log_t(lang, 'saved')}: {settings.ggf_output}")
+    log_lines.append(f"{log_t(lang, 'file_size')}: {file_size_unchanged}")
 
     if settings.report_output:
         settings.report_output = Path(settings.report_output)
@@ -315,15 +338,3 @@ def update_ggf_dates(settings: ProcessSettings) -> ProcessResult:
         file_size_unchanged=file_size_unchanged,
         log_lines=log_lines,
     )
-
-
-if __name__ == "__main__":
-    example_settings = ProcessSettings(
-        ggf_input=Path("Br_3_temp_60slots.GGF"),
-        xlsx_input=Path("Br_3_chemie_datai.xlsx"),
-        ggf_output=Path("Br_3_temp_updated_from_excel.GGF"),
-        report_output=Path("Br_3_temp_update_report.txt"),
-    )
-
-    result = update_ggf_dates(example_settings)
-    print("\n".join(result.log_lines))

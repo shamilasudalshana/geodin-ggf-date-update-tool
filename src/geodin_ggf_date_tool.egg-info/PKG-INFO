@@ -1,3 +1,13 @@
+Metadata-Version: 2.4
+Name: geodin-ggf-date-tool
+Version: 0.1.0
+Summary: GUI tool to update GeoDIN GGF layout sampling dates from Excel.
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: openpyxl>=3.1.0
+Requires-Dist: tkinterdnd2>=0.4.2
+Requires-Dist: Pillow>=10.0.0
+
 # GeoDIN GGF Date Tool
 
 A small helper tool to update sampling dates inside GeoDIN `.GGF` graphics/layout files using dates from an Excel file.
@@ -57,15 +67,9 @@ ModuleNotFoundError: No module named 'geodin_ggf_tool'
 ```
 
 
-## Build Windows EXE
+## Package as EXE later
 
-Install PyInstaller:
-
-```bash
-pip install pyinstaller
-```
-
-To build exe - A basic PyInstaller command:
+A basic PyInstaller command:
 
 ```bash
 pyinstaller --onefile --windowed --name GeoDIN_GGF_Date_Tool main.py
@@ -73,3 +77,11 @@ pyinstaller --onefile --windowed --name GeoDIN_GGF_Date_Tool main.py
 
 The final `.exe` will appear in the `dist/` folder.
 
+## Planned features
+
+- Drag-and-drop support for `.GGF` and `.xlsx` files
+- English/German interface language switch
+- German and English logs/messages
+- Better duplicate-date review before writing
+- Excel preview before processing
+- PyInstaller `.exe` build to run without Python

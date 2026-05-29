@@ -9,8 +9,9 @@ description = "GUI tool to update GeoDIN GGF layout sampling dates from Excel."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "openpyxl>=3.1.0"
-    "tkinterdnd2>=0.4.2"
+    "openpyxl>=3.1.0",
+    "tkinterdnd2>=0.4.2",
+    "Pillow>=10.0.0"
 ]
 
 [tool.setuptools.packages.find]
